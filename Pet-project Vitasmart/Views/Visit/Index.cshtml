@@ -1,0 +1,143 @@
+﻿<div class="container">
+    <h1>Посещения</h1>
+
+    <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+        Создать запись
+    </button>
+
+    <table class="table" id="patientsTable">
+        <thead>
+            <tr>
+                <th>Дата посещения</th>
+                <th>Код диагноза</th>
+                <th>Диагноз</th>
+            </tr>
+        </thead>
+        <tbody id="patientsTablebody">
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Создание записи о пациенте</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                    <div class="row">
+                        <div class="form-group">
+                            <label class="control-label">Диагноз</label>
+                            <select class="form-select form-select-lg mb-3" id="selectICD">
+                             </select>
+                            <span class="text-danger"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="control-label">Дата посещения</label>
+                            <input class="form-control" type="date" id="inputDateVisit"/>
+                            <span class="text-danger"></span>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                        <button onclick="CreateNewVisit()" type="button" class="btn btn-primary" >Записать</button>
+                    </div>
+
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        const array = []
+
+        const listOfICD = []
+
+        $(document).ready(function () { GetDataVisit(); GetDataICD();});
+
+        function GetDataVisit() // Получить данные о посещении пользователя в виде массива
+        {
+            array.length = 0;
+            console.log('@ViewBag.Id');
+            $.ajax({
+
+                url: "/GetVisitsByPatientId/@ViewBag.Id",
+                type: 'GET',
+                success: function (data) {
+                    $.each(data, function (index, item) {
+                            array.push(item);
+                    });
+                    RebuildTable();
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+        }
+
+        function GetDataICD() // Получить данные МКБ в виде массива
+        {
+            listOfICD.length = 0;
+            $.ajax({
+                url: '@Url.Action("GetAllICDs", "ICD")',
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    $.each(data, function (index, item) {
+
+                        listOfICD.push(item);
+                    });
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+        }
+
+        function RebuildTable() // Создание таблицы
+        {
+            array.forEach(function (item) {
+                $('#patientsTable').append('<tr><td>'  + item.dateVisit + '</td><td>' + item.diagnosis.code + '</td><td>' + item.diagnosis.name + `</td></tr>` + '');
+            });
+            let select = document.getElementById("selectICD");
+            listOfICD.forEach(function (item) 
+            {
+                let option = document.createElement('option');
+                option.innerHTML = item.name;
+                option.value = item.code;
+                select.appendChild(option);
+            });
+        }
+
+        function CreateNewVisit() // запись нового посещения
+        {
+            let inputDate = document.getElementById("inputDateVisit");
+            let inputICDCode = document.getElementById("selectICD");
+            console.log(inputDate.value);
+            console.log(inputICDCode.value);
+            $.ajax({
+                type: "POST",
+                url: '/CreateVisits?DateVisit=' + inputDate.value + '&ICDCode=' + inputICDCode.value + '&PatientId=@ViewBag.Id',
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (response) {
+                    console.log(response);
+                    alert('Запись произведена');
+                    location.reload(true);
+                },
+                error: function (xhr, status, error) {
+                    console.error(error);
+                    alert('Данные введены не верно');
+                }
+            });
+        }
+
+        </script>
+}

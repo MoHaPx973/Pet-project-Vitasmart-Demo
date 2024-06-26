@@ -1,0 +1,213 @@
+﻿@{
+    ViewData["Title"] = "Home Page";
+}
+
+<div class="container">
+    <h1>Пациенты</h1>
+    <div class="mb-3">
+        <label for="inputName" class="form-label">Поиск по имени</label>
+        <input style="margin-block:10px" type="text" class="form-control" id="inputName">
+        <button class="btn btn-primary" onclick="FindByName()">Поиск</button>
+        <button type="button" class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#exampleModal">
+            Создать запись
+        </button>
+    </div>
+
+    <table class="table" id="patientsTable">
+        <thead>
+            <tr>
+                <th><a class="pe-auto" role="button" onclick="SortByFieldInteger('id')">Номер</a></th>
+                <th><a class="pe-auto" role="button" onclick="SortByFieldString('surname')">Фамилия</a></th>
+                <th><a class="pe-auto" role="button" onclick="SortByFieldString('name')">Имя</a></th>
+                <th><a class="pe-auto" role="button" onclick="SortByFieldString('patronymic')">Отчество</a></th>
+                <th><a class="pe-auto" role="button" onclick="SortByFieldString('birthdate')">Дата рождения</a></th>
+                <th>Номер телефона</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody id="patientsTablebody">
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal -->
+<div class="modal fade" id="exampleModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="exampleModalLabel">Создание записи о пациенте</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                 <form id="modelForm">
+                <div class="row">
+                        <div class="form-group">
+                            <label class="control-label">Фамилия</label>
+                            <input class="form-control" id="inputSurname" name="Surname" />
+                            <span class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label">Имя</label>
+                            <input class="form-control" id="inputName" name="Name" />
+                            <span class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label">Отчество</label>
+                            <input class="form-control" id="inputPatronymic" name="Patronymic" />
+                            <span class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                        <label class="control-label">Дата рождения</label>
+                            <input class="form-control" type="date" id="inputDateBirthday" name="Birthdate" />
+                            <span class="text-danger"></span>
+                        </div>
+                        <div class="form-group">
+                            <label class="control-label">Номер телефона</label>
+                            <input class="form-control" placeholder="89123456789" id="inputPhoneNumber" name="PhoneNumber" />
+                            <span class="text-danger"></span>
+                        </div>
+                </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Закрыть</button>
+                        <input type="submit" class="btn btn-primary" value="Создать" />
+                    </div>
+                </form>
+            </div>  
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+
+    <script>
+        const array = []
+
+        $(document).ready(GetData());
+
+        function GetData() // Получить данные пациентов в виде массива
+        {
+            array.length = 0;
+            $.ajax({
+                url: '@Url.Action("GetAllPatient", "Patient")',
+                type: 'GET',
+                dataType: 'json',
+                success: function (data) {
+                    $.each(data, function (index, item) {
+                            array.push(item);
+                    });
+                    RebuildTable();
+                },
+                error: function (xhr, status, error) {
+                    console.error('Error:', error);
+                }
+            });
+
+        }
+
+        function RebuildTable() // Создание таблицы
+        {
+
+            array.forEach(function (item) {
+                $('#patientsTable').append('<tr><td>' + item.id + '</td><td>' + item.surname + '</td><td>' + item.name
+                    + '</td><td>' + item.patronymic + '</td><td>' + item.birthdate + '</td><td>' + item.phoneNumber + `</td><td><button onclick="PatientsInfo(${item.id})">Подробнее</button></td></tr>` + '');
+            });
+        }
+        function ClearTableData() // Очистка таблицы
+        {
+            let table = document.getElementById('patientsTablebody');
+            table.innerHTML = '';
+        }
+
+        let flag = true;
+        let lastField = null;
+        function SortByFieldString(field) // Сортировка строковых данных
+        {
+            ClearTableData();
+            if (field === lastField) flag = !flag;
+
+            array.sort((a, b) => {
+                let comparison = 0;
+
+                let fieldA = a[field].toUpperCase();
+                let fieldB = b[field].toUpperCase();
+
+                if (fieldA < fieldB) {
+                    comparison = 1;
+                }
+                if (fieldA > fieldB) {
+                    comparison = -1;
+                }
+
+                return flag ? comparison * -1 : comparison;
+            });
+            lastField = field;
+            RebuildTable();
+        }
+
+        function SortByFieldInteger(field) // Сортировка числовых данных
+        {
+            ClearTableData();
+            array.sort((a, b) => a.id - b.id);
+            RebuildTable();
+        }
+
+        function FindByName() // Поиск по имени
+        {
+            ClearTableData();
+            let searchInput = document.getElementById("inputName");
+            console.log(searchInput.value);
+            $.ajax({
+                url: "GetPatientsByName/" + searchInput.value,
+                type: 'GET',
+                success: function (data) {
+                    //console.log(data);
+                    array.length = 0;
+                    $.each(data, function (index, item) {
+                            array.push(item);
+                    });
+                    RebuildTable()
+                },
+                error: function (xhr, status, error) {
+                    GetData();
+                }
+            });
+        }
+
+        const form = document.getElementById('modelForm');
+
+        form.addEventListener('submit', callbackFunction);
+
+        function callbackFunction(event) {
+            event.preventDefault();
+            const myFormData = new FormData(event.target);
+
+            const formDataObj = {};
+            myFormData.forEach((value, key) => (formDataObj[key] = value));
+
+            $.ajax({
+                type: "POST",
+                url: '/CreatePatient?Surname=' + formDataObj.Surname + '&Name=' + formDataObj.Name + '&Patronymic=' + formDataObj.Patronymic + '&Birthdate=' + formDataObj.Birthdate + '&PhoneNumber=' + formDataObj.PhoneNumber,
+                contentType: "application/json; charset=utf-8",
+                dataType: "json",
+                success: function (response) {
+                    console.log(response);
+                    alert('Данные пациента успешно записаны');
+                    location.reload();
+                },
+                error: function (xhr, status, error) {
+                    console.error(error);
+                    alert('Данные введены не верно');
+                }
+            });
+        }
+
+        function PatientsInfo(patientId) // Переход на страницу с посещениями пациента
+        {
+            console.log(patientId)
+            //< a class="nav-link text-dark" asp - area="" asp - controller="Visit" asp - action="Index" > Посещения < /a>
+            window.location.href = "/Visit/" + patientId;
+        }
+
+    </script>
+}
